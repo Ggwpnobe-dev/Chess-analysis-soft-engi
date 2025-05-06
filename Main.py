@@ -74,7 +74,7 @@ class Board:
     
     def _get_pawn_move(self, row, col, color):
         moves = []
-        direction = -1 if color == "white" else 1
+        direction = 1 if color == "white" else -1
         start_row = 1 if color == "white" else 6
 
         #step forward
@@ -168,15 +168,3 @@ class Board:
 
 # Let's create a board instance
 board = Board()
-
-# Example: Get legal moves for the white pawn at A2 (row 1, column 0)
-pawn_moves = board.get_legal_moves(1, 0)
-print(f"Legal moves for white pawn at A2: {pawn_moves}")
-
-# Example: Get legal moves for the black knight at B8 (row 7, column 1)
-knight_moves = board.get_legal_moves(7, 1)
-print(f"Legal moves for black knight at B8: {knight_moves}")
-
-# Example: Get legal moves for the white rook at A1 (row 0, column 0)
-rook_moves = board.get_legal_moves(0, 0)
-print(f"Legal moves for white rook at A1: {rook_moves}")
