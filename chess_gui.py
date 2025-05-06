@@ -13,7 +13,7 @@ pygame.display.set_caption("Chess Game")
 
 # Colors
 WHITE = (240, 217, 181)
-BLACK = (181, 136, 99)
+BLACK = (0, 0, 139)
 LIGHT_HIGHLIGHT = (255, 255, 102)
 DARK_HIGHLIGHT = (173, 216, 230)
 
@@ -24,7 +24,7 @@ for piece in pieces:
     piece_images[piece] = pygame.image.load(f"images/{piece}.png")
     piece_images[piece] = pygame.transform.scale(piece_images[piece], (SQUARE_SIZE, SQUARE_SIZE))
 
-def draw_board(highlighted_squares=None, selected_square=None):
+def draw_board(highlighted_squares=None, selected_square=None, en_passant_target = None):
     if highlighted_squares is None:
         highlighted_squares = []
     for row in range(8):
@@ -32,11 +32,13 @@ def draw_board(highlighted_squares=None, selected_square=None):
             color = WHITE if (row + col) % 2 == 0 else BLACK
             pygame.draw.rect(SCREEN, color, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
             board_coords = (7 - row, col)
-            if board_coords in highlighted_squares:
+            if board_coords == selected_square:
+                pygame.draw.rect(SCREEN, (0, 255, 0), (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE), 5) 
+            elif board_coords in highlighted_squares and en_passant_target != board_coords:
                 highlight_color = LIGHT_HIGHLIGHT if (row + col) % 2 == 0 else DARK_HIGHLIGHT
                 pygame.draw.rect(SCREEN, highlight_color, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE), 5)
-            if selected_square == board_coords:
-                pygame.draw.rect(SCREEN, (0, 255, 0), (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE), 5) # Green border for selected
+            elif board_coords == en_passant_target:
+                pygame.draw.rect(SCREEN, (255, 165, 0), (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE), 5) 
 
 def draw_pieces(board):
     for row in range(8):
@@ -59,6 +61,7 @@ def main():
     running = True
     selected_piece_pos = None
     legal_moves = []
+    en_passant_target = None
 
     while running:
         for event in pygame.event.get():
@@ -70,24 +73,38 @@ def main():
                 clicked_pos = (clicked_row, clicked_col)
 
                 if selected_piece_pos:
-                    # Try to move the piece
-                    if clicked_pos in legal_moves:
-                        board.squares[clicked_row][clicked_col] = board.squares[selected_piece_pos[0]][selected_piece_pos[1]]
-                        board.squares[selected_piece_pos[0]][selected_piece_pos[1]] = None
-                        selected_piece_pos = None
-                        legal_moves = []
+                    start_row, start_col = selected_piece_pos
+                    selected_piece = board.squares[start_row][start_col]
+                    for move in legal_moves:
+                        end_row, end_col = move[:2]
+                        move_type = move[2] if len(move) > 2 else None
+                        if clicked_pos == (end_row, end_col):
+                            board.make_move(selected_piece_pos, clicked_pos)
+                            if move_type == "en_passant":
+                                # Remove the captured pawn
+                                capture_row = start_row
+                                capture_col = end_col
+                                board.squares[capture_row][capture_col] = None
+                            selected_piece_pos = None
+                            legal_moves = []
+                            en_passant_target = None
+                            break
                     else:
                         # Deselect if clicking on a non-legal move square
                         selected_piece_pos = None
                         legal_moves = []
                 else:
-                    # Select a piece
                     piece = board.squares[clicked_row][clicked_col]
-                    if piece: # For now, let's allow selecting any piece
+                    if piece:
                         selected_piece_pos = clicked_pos
                         legal_moves = board.get_legal_moves(clicked_row, clicked_col)
+                        en_passant_target = None
+                        for move in legal_moves:
+                            if len(move) > 2 and move[2] == "en_passant":
+                                en_passant_target = (move[0], move[1])
+                                break
 
-        draw_board(legal_moves, selected_piece_pos)
+        draw_board(legal_moves, selected_piece_pos, en_passant_target)
         draw_pieces(board)
         pygame.display.flip()
 

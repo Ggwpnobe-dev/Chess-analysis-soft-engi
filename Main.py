@@ -10,6 +10,18 @@ class Board:
     def __init__(self):
         self.squares = [[None for _ in range(8)] for _ in range(8)]
         self.setup_board()
+        self.last_move = None
+
+    def make_move(self, start_pos, end_pos):
+        start_row, start_col = start_pos
+        end_row, end_col = end_pos
+        piece = self.squares[start_row][start_col]
+        if piece:
+            self.squares[end_row][end_col] = piece
+            self.squares[start_row][start_col] = None
+            self.last_move = (start_pos, end_pos)
+            return True
+        return False
 
     def setup_board(self):
         # Place white pieces
@@ -76,7 +88,7 @@ class Board:
         moves = []
         direction = 1 if color == "white" else -1
         start_row = 1 if color == "white" else 6
-
+        en_passant_rank = 4 if color == "white" else 3
         #step forward
         new_row = row + direction
         if self._is_valid_move(new_row, col) and not self.squares[new_row][col]:
@@ -94,8 +106,20 @@ class Board:
             if self._is_valid_move(new_row, new_col) and self._is_opponent(new_row, new_col, color):
                 moves.append((new_row, new_col))
 
-        # TODO: En passant and promotion will be added later
+        if self.last_move and row == en_passant_rank:
+            last_start, last_end = self.last_move
+            last_piece = self.squares[last_end[0]][last_end[1]]
+            if last_piece and last_piece.type == "pawn" and \
+               abs(last_start[0] - last_end[0]) == 2 and \
+               abs(col - last_end[1]) == 1 and \
+               last_end[0] == row:
+                capture_row = row + direction
+                capture_col = last_end[1]
+                if self._is_valid_move(capture_row, capture_col) and not self.squares[capture_row][capture_col]:
+                    moves.append((capture_row, capture_col, "en_passant")) # Mark as en passant move
+
         return moves
+
 
     def _get_rook_move(self, row, col, color):
         moves = []
