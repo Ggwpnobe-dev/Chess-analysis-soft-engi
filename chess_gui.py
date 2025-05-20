@@ -63,8 +63,11 @@ def main():
     legal_moves = []
     en_passant_target = None
     current_player = "white"
+    in_check = False
+    game_over = False
+    winner = None
 
-    while running:
+    while running and not game_over: # Added game_over to the loop condition
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -77,23 +80,29 @@ def main():
                     start_row, start_col = selected_piece_pos
                     selected_piece = board.squares[start_row][start_col]
                     if selected_piece and selected_piece.color == current_player:
-                        for move in legal_moves:
+                        possible_moves = board.get_legal_moves(start_row, start_col)
+                        for move in possible_moves:
                             end_row, end_col = move[:2]
                             move_type = move[2] if len(move) > 2 else None
-                            if clicked_pos == (end_row, end_col):
-                                board.make_move(selected_piece_pos, clicked_pos)
-                                if move_type == "en_passant":
-                                    # Remove the captured pawn
-                                    capture_row = start_row
-                                    capture_col = end_col
-                                    board.squares[capture_row][capture_col] = None
-                                selected_piece_pos = None
-                                legal_moves = []
-                                en_passant_target = None
-                                current_player = "black" if current_player == "white" else "white"
-                                break
+                            temp_board = Board()
+                            temp_board.squares = [row[:] for row in board.squares]
+                            temp_board.make_move(selected_piece_pos, (end_row, end_col))
+                            if not temp_board.is_in_check(current_player):
+                                if clicked_pos == (end_row, end_col):
+                                    board.make_move(selected_piece_pos, clicked_pos)
+                                    if move_type == "en_passant":
+                                        capture_row = start_row
+                                        capture_col = end_col
+                                        board.squares[capture_row][capture_col] = None
+                                    selected_piece_pos = None
+                                    legal_moves = []
+                                    en_passant_target = None
+                                    current_player = "black" if current_player == "white" else "white"
+                                    in_check = board.is_in_check(current_player)
+                                    break
+                            elif clicked_pos == (end_row, end_col):
+                                pass
                         else:
-                            # Deselect if clicking on a non-legal move square
                             selected_piece_pos = None
                             legal_moves = []
                             en_passant_target = None
@@ -104,18 +113,57 @@ def main():
                 else:
                     piece = board.squares[clicked_row][clicked_col]
                     if piece and piece.color == current_player:
+                        all_legal_moves = board.get_legal_moves(clicked_row, clicked_col)
+                        valid_moves = []
+                        for move in all_legal_moves:
+                            end_row, end_col = move[:2]
+                            temp_board = Board()
+                            temp_board.squares = [row[:] for row in board.squares]
+                            temp_board.make_move((clicked_row, clicked_col), (end_row, end_col))
+                            if not temp_board.is_in_check(current_player):
+                                valid_moves.append(move)
+                        legal_moves = valid_moves
                         selected_piece_pos = clicked_pos
-                        legal_moves = board.get_legal_moves(clicked_row, clicked_col)
                         en_passant_target = None
                         for move in legal_moves:
                             if len(move) > 2 and move[2] == "en_passant":
                                 en_passant_target = (move[0], move[1])
                                 break
+                    else:
+                        selected_piece_pos = None
+                        legal_moves = []
+                        en_passant_target = None
 
+        # Check for checkmate at the beginning of the current player's turn
+        if not game_over: # Only check if the game isn't already over
+            if board.is_in_check(current_player):
+                has_legal_moves = False
+                for r in range(8):
+                    for c in range(8):
+                        piece = board.squares[r][c]
+                        if piece and piece.color == current_player:
+                            if board.get_legal_moves(r, c):
+                                has_legal_moves = True
+                                break
+                    if has_legal_moves:
+                        break
+                if not has_legal_moves:
+                    game_over = True
+                    winner = "Black" if current_player == "white" else "White"
+                    print(f"Checkmate! {winner} wins!")
+                        
         draw_board(legal_moves, selected_piece_pos, en_passant_target)
         draw_pieces(board)
         pygame.display.set_caption(f"Chess Game - {current_player.capitalize()} to move")
         pygame.display.flip()
+
+    if game_over:
+        font = pygame.font.Font(None, 74)
+        text = font.render(f"Checkmate! {winner} wins!", True, (255, 0, 0))
+        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        SCREEN.blit(text, text_rect)
+        pygame.display.flip()
+        pygame.time.delay(3000)
 
     pygame.quit()
 

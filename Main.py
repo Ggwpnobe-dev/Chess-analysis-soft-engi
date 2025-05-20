@@ -80,6 +80,7 @@ class Board:
     def _is_valid_move(self, row, col):
         return 0 <= row < 8 and 0 <= col < 8
     
+    
     def _is_opponent(self, row, col, color):
         piece = self.squares[row][col]
         return piece and piece.color != color
@@ -182,13 +183,70 @@ class Board:
 
         # TODO: Castling will be added later
         return moves
-
+    
 
     def __repr__(self):
         board_str = ""
         for row in self.squares:
             board_str += " ".join(str(piece) if piece else "--" for piece in row) + "\n"
         return board_str
+    
+    def get_king_position(self, color):
+        for r in range(8):
+            for c in range(8):
+                piece = self.squares[r][c]
+                if piece and piece.color == color and piece.type == "king":
+                    return (r, c)
+        return None
+
+    def get_attacked_squares(self, color):
+        attacked = set()
+        for r in range(8):
+            for c in range(8):
+                piece = self.squares[r][c]
+                if piece and piece.color == color:
+                    moves = self._get_possible_moves(r, c, color)
+                    for move in moves:
+                        attacked.add(move[:2])
+        return attacked
+
+    def _get_possible_moves(self, row, col, color):
+        piece = self.squares[row][col]
+        if not piece:
+            return []
+
+        possible_moves = []
+        piece_type = piece.type
+
+        if piece_type == "pawn":
+            direction = 1 if color == "white" else -1
+            for dc in [-1, 1]:
+                new_row, new_col = row + direction, col + dc
+                if self._is_valid_move(new_row, new_col):
+                    possible_moves.append((new_row, new_col))
+        elif piece_type == "rook":
+            possible_moves.extend(self._get_rook_move(row, col, color))
+        elif piece_type == "knight":
+            possible_moves.extend(self._get_knight_moves(row, col, color))
+        elif piece_type == "bishop":
+            possible_moves.extend(self._get_bishop_moves(row, col, color))
+        elif piece_type == "queen":
+            possible_moves.extend(self._get_rook_move(row, col, color))
+            possible_moves.extend(self._get_bishop_moves(row, col, color))
+        elif piece_type == "king":
+            king_moves = [(0, 1), (0, -1), (1, 0), (-1, 0),
+                          (1, 1), (1, -1), (-1, 1), (-1, -1)]
+            for dr, dc in king_moves:
+                new_row, new_col = row + dr, col + dc
+                if self._is_valid_move(new_row, new_col):
+                    possible_moves.append((new_row, new_col))
+        return possible_moves
+
+    def is_in_check(self, color):
+        king_pos = self.get_king_position(color)
+        opponent_color = "black" if color == "white" else "white"
+        attacked_squares = self.get_attacked_squares(opponent_color)
+        return king_pos in attacked_squares
 
 # Let's create a board instance
 board = Board()
