@@ -62,6 +62,7 @@ def main():
     selected_piece_pos = None
     legal_moves = []
     en_passant_target = None
+    current_player = "white"
 
     while running:
         for event in pygame.event.get():
@@ -75,27 +76,34 @@ def main():
                 if selected_piece_pos:
                     start_row, start_col = selected_piece_pos
                     selected_piece = board.squares[start_row][start_col]
-                    for move in legal_moves:
-                        end_row, end_col = move[:2]
-                        move_type = move[2] if len(move) > 2 else None
-                        if clicked_pos == (end_row, end_col):
-                            board.make_move(selected_piece_pos, clicked_pos)
-                            if move_type == "en_passant":
-                                # Remove the captured pawn
-                                capture_row = start_row
-                                capture_col = end_col
-                                board.squares[capture_row][capture_col] = None
+                    if selected_piece and selected_piece.color == current_player:
+                        for move in legal_moves:
+                            end_row, end_col = move[:2]
+                            move_type = move[2] if len(move) > 2 else None
+                            if clicked_pos == (end_row, end_col):
+                                board.make_move(selected_piece_pos, clicked_pos)
+                                if move_type == "en_passant":
+                                    # Remove the captured pawn
+                                    capture_row = start_row
+                                    capture_col = end_col
+                                    board.squares[capture_row][capture_col] = None
+                                selected_piece_pos = None
+                                legal_moves = []
+                                en_passant_target = None
+                                current_player = "black" if current_player == "white" else "white"
+                                break
+                        else:
+                            # Deselect if clicking on a non-legal move square
                             selected_piece_pos = None
                             legal_moves = []
                             en_passant_target = None
-                            break
                     else:
-                        # Deselect if clicking on a non-legal move square
                         selected_piece_pos = None
                         legal_moves = []
+                        en_passant_target = None
                 else:
                     piece = board.squares[clicked_row][clicked_col]
-                    if piece:
+                    if piece and piece.color == current_player:
                         selected_piece_pos = clicked_pos
                         legal_moves = board.get_legal_moves(clicked_row, clicked_col)
                         en_passant_target = None
@@ -106,6 +114,7 @@ def main():
 
         draw_board(legal_moves, selected_piece_pos, en_passant_target)
         draw_pieces(board)
+        pygame.display.set_caption(f"Chess Game - {current_player.capitalize()} to move")
         pygame.display.flip()
 
     pygame.quit()
