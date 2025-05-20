@@ -134,38 +134,85 @@ def main():
                         legal_moves = []
                         en_passant_target = None
 
-        # Check for checkmate at the beginning of the current player's turn
-        if not game_over: # Only check if the game isn't already over
+        if not game_over:
             if board.is_in_check(current_player):
-                has_legal_moves = False
-                for r in range(8):
-                    for c in range(8):
-                        piece = board.squares[r][c]
+                has_truly_legal_moves = False  # Use a more descriptive name
+                for r_start in range(8):      # Iterate through all squares for starting piece
+                    for c_start in range(8):
+                        piece = board.squares[r_start][c_start]
                         if piece and piece.color == current_player:
-                            if board.get_legal_moves(r, c):
-                                has_legal_moves = True
-                                break
-                    if has_legal_moves:
-                        break
-                if not has_legal_moves:
+                            pseudo_legal_moves = board.get_legal_moves(r_start, c_start) # Get potential moves
+                            for move in pseudo_legal_moves:
+                                end_row, end_col = move[:2]
+                                move_type = move[2] if len(move) > 2 else None
+
+                                # Create a temporary board to test the move
+                                temp_board_checkmate = Board()
+                                # Deep copy the board state
+                                temp_board_checkmate.squares = [row_copy[:] for row_copy in board.squares]
+                                # Also copy the last_move if your Board class uses it for things like en-passant validation internally
+                                # (though _get_pawn_move seems to use self.last_move from the original board)
+                                temp_board_checkmate.last_move = board.last_move 
+
+                                # Make the move on the temporary board
+                                temp_board_checkmate.make_move((r_start, c_start), (end_row, end_col))
+
+                                # *** Crucial: Handle en-passant capture on the temporary board ***
+                                # The Board.make_move only moves the pawn. The actual capture of the en-passant pawn
+                                # is handled in chess_gui.py. This needs to be replicated for the temp board.
+                                if move_type == "en_passant":
+                                    # The pawn being captured is on the same row as the moving pawn's start,
+                                    # but at the destination column.
+                                    temp_board_checkmate.squares[r_start][end_col] = None
+
+                                # Check if this move gets the player out of check
+                                if not temp_board_checkmate.is_in_check(current_player):
+                                    has_truly_legal_moves = True
+                                    break  # Found a legal move for this piece
+                            if has_truly_legal_moves:
+                                break  # Found a legal move for the current player
+                    if has_truly_legal_moves:
+                        break  # Exit outer loop as well
+                
+                if board.is_in_check(current_player) and not has_truly_legal_moves: # Check condition again before declaring
                     game_over = True
                     winner = "Black" if current_player == "white" else "White"
                     print(f"Checkmate! {winner} wins!")
+                    # Your checkmate screen display will then trigger outside the loop
+                # Add stalemate logic here if desired:
+                # elif not board.is_in_check(current_player) and not has_truly_legal_moves:
+                # game_over = True
+                # winner = "Stalemate" 
+                # print("Stalemate! The game is a draw.")
                         
         draw_board(legal_moves, selected_piece_pos, en_passant_target)
         draw_pieces(board)
         pygame.display.set_caption(f"Chess Game - {current_player.capitalize()} to move")
         pygame.display.flip()
 
-    if game_over:
-        font = pygame.font.Font(None, 74)
-        text = font.render(f"Checkmate! {winner} wins!", True, (255, 0, 0))
-        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-        SCREEN.blit(text, text_rect)
-        pygame.display.flip()
-        pygame.time.delay(3000)
+        if game_over:
+            font = pygame.font.Font(None, 74)
+            text_content = f"Checkmate! {winner} wins! \n press esc to close" if winner not in ["Stalemate"] else "Stalemate! Draw!"
+            text = font.render(text_content, True, (255, 0, 0))
+            text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+            SCREEN.blit(text, text_rect)
+            pygame.display.flip()
+            waiting_for_close = True
+            while waiting_for_close:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        waiting_for_close = False
+                        running = False 
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_ESCAPE: # Example: Press ESC to close
+                            waiting_for_close = False
+                            running = False
 
+                # Keep the screen updated (optional, but good practice if you add more elements)
+                SCREEN.blit(text, text_rect)
+                pygame.display.flip()
     pygame.quit()
+    
 
 if __name__ == "__main__":
     main()
