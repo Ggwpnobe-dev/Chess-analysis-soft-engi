@@ -1,0 +1,21 @@
+[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2025.04.30"]
+[Round "?"]
+[White "made-abhirama"]
+[Black "routernobe"]
+[Result "1-0"]
+[TimeControl "300"]
+[WhiteElo "890"]
+[BlackElo "434"]
+[Termination "made-abhirama won on time"]
+[ECO "C46"]
+[EndTime "8:46:38 GMT+0000"]
+[Link "https://www.chess.com/game/live/140316054465?move=60"]
+
+1. e4 e5 2. Nf3 Nc6 3. Nc3 Bc5 4. d3 Nf6 5. Be3 d6 6. Nd5 Nxd5 7. exd5 Nd4 8. c3
+Nxf3+ 9. Qxf3 Bxe3 10. fxe3 O-O 11. d4 exd4 12. cxd4 f6 13. Bd3 Qe7 14. O-O Bd7
+15. Bf5 c6 16. Bxd7 Qxd7 17. dxc6 Qxc6 18. Qxc6 bxc6 19. Rac1 Rac8 20. d5 c5 21.
+b3 a5 22. a3 Rfe8 23. Rf3 Rb8 24. Rb1 c4 25. a4 Rxb3 26. e4 Rxb1+ 27. Kf2 Rxe4
+28. g4 Rbe1 29. h4 R4e2+ 30. Kg3 Rg1+ 31. Kf4 g6 32. g5 f5 33. h5 gxh5 34. g6
+hxg6 35. Rh3 Rg4+ 36. Kf3 Rf4+ 37. Kxe2 c3 38. Kd1 Rxa4 39. Rxc3 g5 40. Rc8+ 1-0

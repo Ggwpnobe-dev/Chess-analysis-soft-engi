@@ -2,6 +2,7 @@ class Piece:
     def __init__(self, color, piece_type):
         self.color = color
         self.type = piece_type
+        self.has_moved = False
 
     def __repr__(self):
         return f"{self.color[0].upper()}{self.type.upper()}"
@@ -11,17 +12,54 @@ class Board:
         self.squares = [[None for _ in range(8)] for _ in range(8)]
         self.setup_board()
         self.last_move = None
+        self.move_history = []
 
-    def make_move(self, start_pos, end_pos):
+    def make_move(self, start_pos, end_pos, move_type = None):
         start_row, start_col = start_pos
         end_row, end_col = end_pos
         piece = self.squares[start_row][start_col]
-        if piece:
-            self.squares[end_row][end_col] = piece
-            self.squares[start_row][start_col] = None
-            self.last_move = (start_pos, end_pos)
-            return True
-        return False
+        captured_piece = self.squares[end_row][end_col]
+
+        if not piece:
+            return False, None
+        
+        # Basic move
+        self.squares[end_row][end_col] = piece
+        self.squares[start_row][start_col] = None
+        piece.has_moved = True
+
+        if move_type == "kingside_castle":
+            # Move rook from h-file to f-file
+            rook = self.squares[start_row][7]
+            if rook and rook.type == "rook" and rook.color == piece.color:
+                self.squares[start_row][5] = rook 
+                self.squares[start_row][7] = None 
+                rook.has_moved = True
+            
+        elif move_type == "queenside_castle":
+            # Move rook from a-file to d-file
+            rook = self.squares[start_row][0]
+            if rook and rook.type == "rook" and rook.color == piece.color:
+                self.squares[start_row][3] = rook 
+                self.squares[start_row][0] = None 
+                rook.has_moved = True
+            
+        elif move_type == "en_passant":
+            # Remove captured pawn
+            captured_pawn_row = start_row
+            captured_pawn_col = end_col
+            actual_ep_captured_pawn = self.squares[captured_pawn_row][captured_pawn_col]
+            if actual_ep_captured_pawn and actual_ep_captured_pawn.type == "pawn" and actual_ep_captured_pawn.color != piece.color:
+                self.squares[captured_pawn_row][captured_pawn_col] = None 
+                captured_piece = actual_ep_captured_pawn 
+        
+        if piece.type == "pawn" and abs(start_row - end_row) == 2:
+           
+            self.last_move = (start_pos, end_pos) 
+        else:
+            
+            self.last_move = None 
+        return True, captured_piece
 
     def setup_board(self):
         # Place white pieces
@@ -124,7 +162,7 @@ class Board:
 
     def _get_rook_move(self, row, col, color):
         moves = []
-        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # Right, Left, Down, Up
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  
 
         for dr, dc in directions:
             for i in range(1, 8):
@@ -135,9 +173,9 @@ class Board:
                     moves.append((new_row, new_col))
                 elif self._is_opponent(new_row, new_col, color):
                     moves.append((new_row, new_col))
-                    break  # Stop after capturing
+                    break  
                 else:
-                    break  # Blocked by own piece
+                    break  
         return moves
     
     def _get_knight_moves(self, row, col, color):
@@ -154,7 +192,7 @@ class Board:
 
     def _get_bishop_moves(self, row, col, color):
         moves = []
-        directions = [(1, 1), (1, -1), (-1, 1), (-1, -1)]  # Diagonal directions
+        directions = [(1, 1), (1, -1), (-1, 1), (-1, -1)]  
 
         for dr, dc in directions:
             for i in range(1, 8):
@@ -165,25 +203,55 @@ class Board:
                     moves.append((new_row, new_col))
                 elif self._is_opponent(new_row, new_col, color):
                     moves.append((new_row, new_col))
-                    break  # Stop after capturing
+                    break  
                 else:
-                    break  # Blocked by own piece
+                    break  
         return moves
 
     def _get_king_moves(self, row, col, color):
         moves = []
+        king = self.squares[row][col]
+        
+        if not king or king.type != "king":
+            return []
+        
         king_moves = [(0, 1), (0, -1), (1, 0), (-1, 0),
                       (1, 1), (1, -1), (-1, 1), (-1, -1)]
 
         for dr, dc in king_moves:
             new_row, new_col = row + dr, col + dc
-            if self._is_valid_move(new_row, new_col) and \
-               (not self.squares[new_row][new_col] or self._is_opponent(new_row, new_col, color)):
-                moves.append((new_row, new_col))
+            if self._is_valid_move(new_row, new_col):
+                target_square_piece = self.squares[new_row][new_col]
+                if not target_square_piece or self._is_opponent(new_row, new_col, color):
+                    moves.append((new_row, new_col))
 
-        # TODO: Castling will be added later
+        if not king.has_moved and not self.is_in_check(color):
+            opponent_color = "black" if color == "white" else "white"
+            attacked_by_opponent = self.get_attacked_squares(opponent_color)
+
+
+            kingside_rook_col = 7
+            kingside_rook = self.squares[row][kingside_rook_col]
+            if kingside_rook and kingside_rook.type == "rook" and \
+            kingside_rook.color == color and not kingside_rook.has_moved:
+                if self.squares[row][col + 1] is None and self.squares[row][col + 2] is None:
+                    if (row, col + 1) not in attacked_by_opponent and \
+                    (row, col + 2) not in attacked_by_opponent:
+                        moves.append((row, col + 2, "kingside_castle"))
+
+            queenside_rook_col = 0
+            queenside_rook = self.squares[row][queenside_rook_col]
+            if queenside_rook and queenside_rook.type == "rook" and \
+            queenside_rook.color == color and not queenside_rook.has_moved:
+                if self.squares[row][col - 1] is None and \
+                self.squares[row][col - 2] is None:                    
+                    if (self.squares[row][col - 1] is None and 
+                        self.squares[row][col - 2] is None and 
+                        self.squares[row][col - 3] is None):
+                        moves.append((row, col - 2, "queenside_castle"))
+
         return moves
-    
+
 
     def __repr__(self):
         board_str = ""
@@ -209,6 +277,38 @@ class Board:
                     for move in moves:
                         attacked.add(move[:2])
         return attacked
+
+    def get_castling_fen_rights(self) -> str:
+        """Determines FEN castling string based on king/rook has_moved status."""
+        rights = ""
+        # White Kingside (K)
+        king_w = self.squares[0][4]
+        rook_h1 = self.squares[0][7]
+        if king_w and king_w.type == 'king' and king_w.color == 'white' and not king_w.has_moved and \
+           rook_h1 and rook_h1.type == 'rook' and rook_h1.color == 'white' and not rook_h1.has_moved:
+            rights += "K"
+        # White Queenside (Q)
+        rook_a1 = self.squares[0][0]
+        if king_w and king_w.type == 'king' and king_w.color == 'white' and not king_w.has_moved and \
+           rook_a1 and rook_a1.type == 'rook' and rook_a1.color == 'white' and not rook_a1.has_moved:
+            rights += "Q"
+
+        # Black Kingside (k)
+        king_b = self.squares[7][4]
+        rook_h8 = self.squares[7][7]
+        if king_b and king_b.type == 'king' and king_b.color == 'black' and not king_b.has_moved and \
+           rook_h8 and rook_h8.type == 'rook' and rook_h8.color == 'black' and not rook_h8.has_moved:
+            rights += "k"
+        # Black Queenside (q)
+        rook_a8 = self.squares[7][0]
+        if king_b and king_b.type == 'king' and king_b.color == 'black' and not king_b.has_moved and \
+           rook_a8 and rook_a8.type == 'rook' and rook_a8.color == 'black' and not rook_a8.has_moved:
+            rights += "q"
+
+        return rights if rights else "-"
+    def _algebraic_square(self, row, col):
+        files = "abcdefgh"
+        return f"{files[col]}{row + 1}"
 
     def _get_possible_moves(self, row, col, color):
         piece = self.squares[row][col]
